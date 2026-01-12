@@ -1,16 +1,29 @@
+import asyncio
 from fastapi import FastAPI
 from sqlmodel import SQLModel
-from src.db.models import ActiveContact, DeletedContact  # импортируем модели
-from src.db.session import engine  # движок должен быть определён
+from contextlib import asynccontextmanager
+
 from src.logger import logger
 from src.settings import settings
+from src.db.session import get_engine
+from src.db.models import ActiveContact, DeletedContact
 
 
-# Создаём таблицы при старте (только если их нет)
-SQLModel.metadata.create_all(engine)
-logger.info('✅ Database tables created (if not exist)')
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Создаёт все таблицы, если их нет.
+    Вызывать один раз при старте бота.
+    """
+    async with get_engine().begin() as conn:
+        # Создаём все таблицы, унаследованные от SQLModel
+        await conn.run_sync(SQLModel.metadata.create_all)
+        logger.info('Базы созданы')
 
-app = FastAPI(title=settings.app_name, debug=settings.debug)
+    yield
+
+
+app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=lifespan)
 
 
 @app.get('/')

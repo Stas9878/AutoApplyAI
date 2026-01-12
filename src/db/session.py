@@ -7,7 +7,7 @@ from src.settings import settings
 
 
 def get_engine(database_url: str | None = None) -> AsyncEngine:
-    url = database_url or settings.DATABASE_URL
+    url = database_url or settings.database_url
     return create_async_engine(
         url,
         echo=False,

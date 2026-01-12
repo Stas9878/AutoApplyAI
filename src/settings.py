@@ -20,8 +20,8 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str
 
-    # PostgreSQL
-    postgres_url: str
+    # DataBase
+    database_url: str
 
     model_config = SettingsConfigDict(
         env_file='.env',
