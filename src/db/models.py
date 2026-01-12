@@ -1,6 +1,6 @@
 from uuid import UUID, uuid4
+from datetime import datetime
 from sqlmodel import SQLModel, Field
-from datetime import datetime, timezone
 
 
 class BaseContact(SQLModel):
