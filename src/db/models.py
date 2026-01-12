@@ -8,9 +8,7 @@ class BaseContact(SQLModel):
     email: str = Field(max_length=255, unique=True)
     company_name: str = Field(max_length=255)
     source_url: str = Field(max_length=500)
-    parsed_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    parsed_at: datetime = Field(default_factory=datetime.now)
 
 
 class ActiveContact(BaseContact, table=True):
@@ -18,6 +16,4 @@ class ActiveContact(BaseContact, table=True):
 
 
 class DeletedContact(BaseContact, table=True):
-    deleted_at: datetime = Field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
+    deleted_at: datetime = Field(default_factory=datetime.now)
