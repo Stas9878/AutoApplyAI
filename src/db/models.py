@@ -5,8 +5,8 @@ from datetime import datetime, timezone
 
 class BaseContact(SQLModel):
     uuid: UUID = Field(default_factory=uuid4, primary_key=True)
-    email: str = Field(max_length=255, unique=True)
-    company_name: str = Field(max_length=255)
+    email: str = Field(max_length=255, index=True)
+    company_name: str = Field(max_length=255, index=True)
     source_url: str = Field(max_length=500)
     parsed_at: datetime = Field(default_factory=datetime.now)
 
