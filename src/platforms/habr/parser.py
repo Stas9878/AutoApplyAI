@@ -103,5 +103,7 @@ class HabrParser:
                             'source_url': comp['url']
                         })
 
+                page += 1
+
         logger.info(f'✅ Всего найдено {len(all_contacts)} email\'ов')
         return all_contacts
