@@ -8,6 +8,7 @@ class BaseContact(SQLModel):
     email: str = Field(max_length=255, index=True)
     company_name: str = Field(max_length=255, index=True)
     source_url: str = Field(max_length=500)
+    outreach_status: str | None = Field(default=None, max_length=20)
     parsed_at: datetime = Field(default_factory=datetime.now)
 
 
