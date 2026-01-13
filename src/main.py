@@ -1,3 +1,4 @@
+import warnings
 from fastapi import FastAPI
 from sqlmodel import SQLModel
 from contextlib import asynccontextmanager
@@ -7,6 +8,12 @@ from src.db.session import get_engine
 from src.core.settings import settings
 from src.api.v1.outreach import outreach_router
 from src.db.models import ActiveContact, DeletedContact
+
+warnings.filterwarnings(
+    'ignore',
+    category=UserWarning,
+    message='Pydantic serializer warnings*'
+)
 
 
 @asynccontextmanager
