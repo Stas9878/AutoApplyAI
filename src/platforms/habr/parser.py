@@ -2,7 +2,7 @@ import asyncio
 import aiohttp
 from bs4 import BeautifulSoup
 
-from src.logger import logger
+from src.core.logger import logger
 
 
 class HabrParser:

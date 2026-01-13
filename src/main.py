@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from sqlmodel import SQLModel
 from contextlib import asynccontextmanager
 
-from src.logger import logger
-from src.settings import settings
+from src.core.logger import logger
+from src.core.settings import settings
 from src.db.session import get_engine
 from src.db.models import ActiveContact, DeletedContact
 

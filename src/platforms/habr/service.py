@@ -1,6 +1,6 @@
 from sqlmodel import select
 
-from src.logger import logger
+from src.core.logger import logger
 from src.db.session import get_db_session
 from src.platforms.habr.parser import HabrParser
 from src.db.models import ActiveContact, DeletedContact
