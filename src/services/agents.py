@@ -3,8 +3,8 @@ import fitz
 from pathlib import Path
 from crewai import Agent, Task, Crew, LLM, Process
 
-from src.logger import logger
-from src.settings import settings
+from src.core.logger import logger
+from src.core.settings import settings
 
 
 class CoverLetterCrew:

@@ -4,8 +4,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.mime.application import MIMEApplication
 
-from src.settings import settings
-from src.logger import logger
+from src.core.settings import settings
+from src.core.logger import logger
 
 
 def send_email(to_email: str, subject: str, body: str, pdf_path: Path | None = None) -> bool:
