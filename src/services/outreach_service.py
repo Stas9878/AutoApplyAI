@@ -40,7 +40,7 @@ async def send_outreach_batch(session: AsyncSession, batch_size: int) -> int:
         else:
             await mark_contact_as_failed(session, contact)
 
-        await asyncio.sleep(2)  # вежливая пауза
+        await asyncio.sleep(1)  # пауза
 
     logger.info(f'✅ Отправлено {sent_count} писем')
     return sent_count

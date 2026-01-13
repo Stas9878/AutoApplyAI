@@ -3,8 +3,9 @@ from sqlmodel import SQLModel
 from contextlib import asynccontextmanager
 
 from src.core.logger import logger
-from src.core.settings import settings
 from src.db.session import get_engine
+from src.core.settings import settings
+from src.api.v1.outreach import outreach_router
 from src.db.models import ActiveContact, DeletedContact
 
 
@@ -23,6 +24,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=lifespan)
+
+app.include_router(outreach_router)
 
 
 @app.get('/')

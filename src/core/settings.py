@@ -17,12 +17,16 @@ class Settings(BaseSettings):
     email_user: str
     email_password: str
 
+    # Config
+    max_emails_per_24h: int
+
     # Redis
     redis_url: str
 
     # DataBase
     database_url: str
 
+    # LLM
     llm_model: str
     llm_url: str
 
