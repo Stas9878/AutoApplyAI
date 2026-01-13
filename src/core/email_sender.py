@@ -9,7 +9,6 @@ from src.logger import logger
 
 
 def send_email(to_email: str, subject: str, body: str, pdf_path: Path | None = None) -> bool:
-    """Отправляет email через SMTP."""
     try:
         if settings.email_port == 465:
             server = smtplib.SMTP_SSL(settings.email_host, settings.email_port)
@@ -18,6 +17,7 @@ def send_email(to_email: str, subject: str, body: str, pdf_path: Path | None = N
             server.starttls()
 
         server.login(settings.email_user, settings.email_password)
+
         msg = MIMEMultipart()
         msg['From'] = settings.email_user
         msg['To'] = to_email
@@ -34,6 +34,13 @@ def send_email(to_email: str, subject: str, body: str, pdf_path: Path | None = N
         server.quit()
         return True
 
+    except smtplib.SMTPRecipientsRefused as e:
+        # Ошибки вроде "non-local recipient", "user unknown"
+        logger.warning(f'📧 SMTP отклонил получателя {to_email}: {e}')
+        return False
+    except smtplib.SMTPException as e:
+        logger.error(f'📧 SMTP ошибка при отправке на {to_email}: {e}')
+        return False
     except Exception as e:
-        logger.error(f'❌ Ошибка отправки на {to_email}: {e}')
+        logger.error(f'❌ Неизвестная ошибка отправки на {to_email}: {e}')
         return False

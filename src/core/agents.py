@@ -43,16 +43,14 @@ class CoverLetterCrew:
             role='Профессиональный Python-разработчик',
             goal='Написать персонализированное сопроводительное письмо',
             backstory='Ты — опытный python разработчик. Используй только информацию из предоставленного резюме.',
-            llm=self.llm,
-            verbose=True
+            llm=self.llm
         )
 
         validator = Agent(
             role='Редактор технической документации',
             goal='Проверить письмо на соответствие требованиям',
             backstory='Ты проверяешь, что письмо основано на резюме, не содержит упоминаний прошлых компаний и звучит естественно.',
-            llm=self.llm,
-            verbose=True
+            llm=self.llm
         )
 
         generate_task = Task(
@@ -95,8 +93,7 @@ class CoverLetterCrew:
         return Crew(
             agents=[generator, validator],
             tasks=[generate_task, validate_task],
-            process=Process.sequential,
-            verbose=False
+            process=Process.sequential
         )
 
     async def generate_letter(self, company_name: str) -> str | None:
