@@ -6,8 +6,12 @@ from fastapi import APIRouter, Depends, BackgroundTasks
 from src.core.settings import settings
 from src.db.session import get_db_session
 from src.services.agents import CoverLetterCrew
-from src.services.outreach_service import send_outreach_batch
-from src.db.crud import get_sent_count_last_24h, get_oldest_sent_time
+from src.services.outreach_service import send_outreach_batch, outreach_state
+from src.db.crud import (
+    get_sent_count_last_24h,
+    get_oldest_sent_time,
+    get_recently_sent_companies
+)
 from src.api.v1.schemas.outreach import (
     SendOutreachResponse,
     GenerateLetterRequest,
@@ -53,6 +57,27 @@ async def trigger_outreach(
         sent_count=sent_count,
         max_allowed=settings.max_emails_per_24h
     )
+
+
+@outreach_router.get('/status')
+async def get_outreach_status(session: AsyncSession = Depends(get_db_session)):
+    sent_count = await get_sent_count_last_24h(session)
+    recent_companies = await get_recently_sent_companies(session)
+
+    recently_sent_to = {}
+    for contact in recent_companies:
+        recently_sent_to[contact.email] = {
+            'company_name': contact.company_name,
+            'sent_at': contact.sent_at
+        }
+
+    return {
+        'is_running': outreach_state.is_running,
+        'started_at': outreach_state.started_at,
+        'sent_count': sent_count,
+        'max_allowed': settings.max_emails_per_24h,
+        'recently_sent_to': recently_sent_to,
+    }
 
 
 @outreach_router.post('/generate', response_model=GenerateLetterResponse)

@@ -1,5 +1,6 @@
 import asyncio
 from pathlib import Path
+from datetime import datetime
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.core.logger import logger
@@ -14,39 +15,60 @@ from src.db.crud import (
 )
 
 
+class OutreachState:
+    def __init__(self):
+        self.is_running = False
+        self.started_at: datetime | None = None
+
+    def start(self):
+        self.is_running = True
+        self.started_at = datetime.now()
+
+
+    def stop(self):
+        self.is_running = False
+        self.started_at = None
+
+
+outreach_state = OutreachState()
+
+
 async def send_outreach_batch(session: AsyncSession, batch_size: int) -> int:
-    contacts = await get_pending_contacts(session, limit=batch_size)
-    if not contacts:
-        logger.info('📭 Нет контактов для отправки')
-        return 0
+    outreach_state.start()
 
-    pdf_path = Path(settings.resume_pdf_path)
-    crew = CoverLetterCrew()
-    sent_count = 0
+    try:
+        contacts = await get_pending_contacts(session, limit=batch_size)
+        if not contacts:
+            logger.info('📭 Нет контактов для отправки')
+            return 0
 
-    today_sent_count = await get_sent_count_last_24h(session)
-    for contact in contacts:
+        pdf_path = Path(settings.resume_pdf_path)
+        crew = CoverLetterCrew()
+        sent_count = 0
 
-        if today_sent_count + sent_count >= settings.max_emails_per_24h:
-            break
+        today_sent_count = await get_sent_count_last_24h(session)
+        for contact in contacts:
 
-        logger.info(f'✍️ Генерация письма для {contact.company_name} ({contact.email})')
-        letter = await crew.generate_letter(contact.company_name)
+            if today_sent_count + sent_count >= settings.max_emails_per_24h:
+                break
 
-        if not letter:
-            await mark_contact_as_failed(session, contact)
-            continue
+            logger.info(f'✍️ Генерация письма для {contact.company_name} ({contact.email})')
+            letter = await crew.generate_letter(contact.company_name)
 
-        subject = 'Резюме Python-разработчика'
-        success = send_email(contact.email, subject, letter, pdf_path)
+            if not letter:
+                await mark_contact_as_failed(session, contact)
+                continue
 
-        if success:
-            await mark_contact_as_sent(session, contact)
-            sent_count += 1
-        else:
-            await mark_contact_as_failed(session, contact)
+            subject = 'Резюме Python-разработчика'
+            success = send_email(contact.email, subject, letter, pdf_path)
 
-        await asyncio.sleep(1)  # пауза
+            if success:
+                await mark_contact_as_sent(session, contact)
+                sent_count += 1
+            else:
+                await mark_contact_as_failed(session, contact)
 
-    logger.info(f'✅ Отправлено {sent_count} писем')
-    return sent_count
+        logger.info(f'✅ Отправлено {sent_count} писем')
+        return sent_count
+    finally:
+        outreach_state.stop()

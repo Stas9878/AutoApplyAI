@@ -36,7 +36,6 @@ async def get_pending_contacts(session: AsyncSession, limit: int):
 
 
 async def mark_contact_as_sent(session: AsyncSession, contact: ActiveContact):
-    from datetime import datetime, timezone
     contact.outreach_status = 'sent'
     contact.sent_at = datetime.now()
     session.add(contact)
@@ -47,3 +46,13 @@ async def mark_contact_as_failed(session: AsyncSession, contact: ActiveContact):
     contact.outreach_status = 'failed'
     session.add(contact)
     await session.commit()
+
+
+async def get_recently_sent_companies(session: AsyncSession):
+    statement = (
+        select(ActiveContact)
+        .where(ActiveContact.sent_at >= datetime.now() - timedelta(hours=24))
+        .order_by(ActiveContact.sent_at.desc())
+    )
+    result = await session.exec(statement)
+    return result.all()
