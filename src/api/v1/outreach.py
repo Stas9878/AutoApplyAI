@@ -15,7 +15,8 @@ from src.db.crud import (
 from src.api.v1.schemas.outreach import (
     SendOutreachResponse,
     GenerateLetterRequest,
-    GenerateLetterResponse
+    GenerateLetterResponse,
+    StatusOutreachResponse
 )
 
 outreach_router = APIRouter(prefix='/outreach', tags=['Outreach'])
@@ -59,8 +60,9 @@ async def trigger_outreach(
     )
 
 
-@outreach_router.get('/status')
+@outreach_router.get('/status', response_model=StatusOutreachResponse)
 async def get_outreach_status(session: AsyncSession = Depends(get_db_session)):
+    '''Справочная информация о рассылке'''
     sent_count = await get_sent_count_last_24h(session)
     recent_companies = await get_recently_sent_companies(session)
 
@@ -71,13 +73,13 @@ async def get_outreach_status(session: AsyncSession = Depends(get_db_session)):
             'sent_at': contact.sent_at
         }
 
-    return {
-        'is_running': outreach_state.is_running,
-        'started_at': outreach_state.started_at,
-        'sent_count': sent_count,
-        'max_allowed': settings.max_emails_per_24h,
-        'recently_sent_to': recently_sent_to,
-    }
+    return StatusOutreachResponse(
+        is_running=outreach_state.is_running,
+        started_at=outreach_state.started_at,
+        sent_count=sent_count,
+        max_allowed=settings.max_emails_per_24h,
+        recently_sent_to=recently_sent_to
+    )
 
 
 @outreach_router.post('/generate', response_model=GenerateLetterResponse)
