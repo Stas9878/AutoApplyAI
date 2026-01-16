@@ -99,7 +99,7 @@ class CoverLetterCrew:
     async def generate_letter(self, company_name: str) -> str | None:
         try:
             crew = self.create_crew(company_name)
-            result = crew.kickoff()
+            result = await crew.kickoff_async()
             letter = str(result).strip()
             logger.info(f'✅ CrewAI сгенерировал письмо для {company_name}')
             logger.info(f'📄 Письмо:\n{letter}')
