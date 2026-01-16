@@ -32,6 +32,7 @@ def send_email(to_email: str, subject: str, body: str, pdf_path: Path | None = N
 
         server.sendmail(settings.email_user, to_email, msg.as_string())
         server.quit()
+        logger.info(f'📧 SMTP успешная отправка резюме на {to_email}')
         return True
 
     except smtplib.SMTPRecipientsRefused as e:

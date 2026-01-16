@@ -1,4 +1,3 @@
-from typing import Annotated
 from fastapi import HTTPException
 from datetime import datetime, timedelta
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -21,7 +20,7 @@ outreach_router = APIRouter(prefix='/outreach', tags=['Outreach'])
 @outreach_router.post('/send')
 async def trigger_outreach(
     background_tasks: BackgroundTasks,
-    session: Annotated[AsyncSession, Depends(get_db_session)]
+    session: AsyncSession = Depends(get_db_session)
 ):
     '''Запуск рассылки резюме'''
     sent_count = await get_sent_count_last_24h(session)
@@ -45,12 +44,8 @@ async def trigger_outreach(
             max_allowed=settings.max_emails_per_24h
         )
 
-    # Запускаем фоновую задачу с новой сессией
-    async def _send():
-        async with get_db_session() as bg_session:
-            await send_outreach_batch(bg_session, batch_size=5)
-
-    background_tasks.add_task(_send)
+    # Запускаем фоновую задачу
+    background_tasks.add_task(send_outreach_batch, session, batch_size=10)
 
     return SendOutreachResponse(
         status='started',

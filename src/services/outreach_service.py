@@ -5,6 +5,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from src.core.logger import logger
 from src.core.settings import settings
 from src.services.agents import CoverLetterCrew
+from src.db.crud import get_sent_count_last_24h
 from src.services.email_sender import send_email
 from src.db.crud import (
     get_pending_contacts,
@@ -23,7 +24,12 @@ async def send_outreach_batch(session: AsyncSession, batch_size: int) -> int:
     crew = CoverLetterCrew()
     sent_count = 0
 
+    today_sent_count = await get_sent_count_last_24h(session)
     for contact in contacts:
+
+        if today_sent_count + sent_count >= settings.max_emails_per_24h:
+            break
+
         logger.info(f'✍️ Генерация письма для {contact.company_name} ({contact.email})')
         letter = await crew.generate_letter(contact.company_name)
 
