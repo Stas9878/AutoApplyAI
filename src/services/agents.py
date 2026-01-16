@@ -8,6 +8,8 @@ from src.core.settings import settings
 
 
 class CoverLetterCrew:
+    '''Команда агентов для генерации персонализированного сопроводительного письма.'''
+
     def __init__(self):
         self.llm = LLM(
             model=settings.llm_model,
@@ -19,11 +21,13 @@ class CoverLetterCrew:
         self.resume_text = self._load_resume_text()
 
     def _clean_text(self, text: str) -> str:
+        '''Очищает текст резюме от лишних переносов и пробелов.'''
         text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text)
         text = re.sub(r' +', ' ', text)
         return text.strip()
 
     def _load_resume_text(self) -> str:
+        '''Загружает и парсит PDF-резюме в текст.'''
         pdf_path = Path(settings.resume_pdf_path)
         if not pdf_path.exists():
             raise FileNotFoundError(f'Резюме не найдено: {pdf_path}')
@@ -37,6 +41,7 @@ class CoverLetterCrew:
             raise
 
     def create_crew(self, company_name: str) -> Crew:
+        '''Создаёт команду агентов для генерации письма под конкретную компанию.'''
         resume_context = self.resume_text
 
         generator = Agent(
@@ -97,6 +102,7 @@ class CoverLetterCrew:
         )
 
     async def generate_letter(self, company_name: str) -> str | None:
+        '''Генерирует сопроводительное письмо для указанной компании.'''
         try:
             crew = self.create_crew(company_name)
             result = await crew.kickoff_async()

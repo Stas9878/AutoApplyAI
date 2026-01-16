@@ -16,6 +16,8 @@ from src.db.crud import (
 
 
 class OutreachState:
+    '''Глобальное состояние активной рассылки (в памяти).'''
+
     def __init__(self):
         self.is_running = False
         self.started_at: datetime | None = None
@@ -23,7 +25,6 @@ class OutreachState:
     def start(self):
         self.is_running = True
         self.started_at = datetime.now()
-
 
     def stop(self):
         self.is_running = False
@@ -34,6 +35,15 @@ outreach_state = OutreachState()
 
 
 async def send_outreach_batch(session: AsyncSession, batch_size: int) -> int:
+    '''Выполняет пакетную отправку сопроводительных писем.
+
+    Args:
+        session: Асинхронная сессия SQLAlchemy.
+        batch_size: Максимальное число контактов для обработки.
+
+    Returns:
+        Число успешно отправленных писем.
+    '''
     outreach_state.start()
 
     try:

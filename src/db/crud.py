@@ -6,6 +6,7 @@ from src.db.models import ActiveContact
 
 
 async def get_sent_count_last_24h(session: AsyncSession) -> int:
+    '''Возвращает количество отправленных писем за последние 24 часа.'''
     cutoff = datetime.now() - timedelta(hours=24)
     statement = select(ActiveContact).where(
         ActiveContact.outreach_status == 'sent',
@@ -16,6 +17,7 @@ async def get_sent_count_last_24h(session: AsyncSession) -> int:
 
 
 async def get_oldest_sent_time(session: AsyncSession) -> datetime | None:
+    '''Возвращает время самой ранней отправки за последние 24 часа.'''
     statement = (
         select(ActiveContact.sent_at)
         .where(ActiveContact.outreach_status == 'sent')
@@ -26,6 +28,7 @@ async def get_oldest_sent_time(session: AsyncSession) -> datetime | None:
 
 
 async def get_pending_contacts(session: AsyncSession, limit: int):
+    '''Получает контакты со статусом NULL (ожидающие отправки).'''
     statement = (
         select(ActiveContact)
         .where(ActiveContact.outreach_status == None)
@@ -36,6 +39,7 @@ async def get_pending_contacts(session: AsyncSession, limit: int):
 
 
 async def mark_contact_as_sent(session: AsyncSession, contact: ActiveContact):
+    '''Помечает контакт как успешно отправленный.'''
     contact.outreach_status = 'sent'
     contact.sent_at = datetime.now()
     session.add(contact)
@@ -43,12 +47,14 @@ async def mark_contact_as_sent(session: AsyncSession, contact: ActiveContact):
 
 
 async def mark_contact_as_failed(session: AsyncSession, contact: ActiveContact):
+    '''Помечает контакт как неудачная попытка отправки.'''
     contact.outreach_status = 'failed'
     session.add(contact)
     await session.commit()
 
 
 async def get_recently_sent_companies(session: AsyncSession):
+    '''Получает список компаний, которым отправляли письма за последние 24 часа.'''
     statement = (
         select(ActiveContact)
         .where(ActiveContact.sent_at >= datetime.now() - timedelta(hours=24))

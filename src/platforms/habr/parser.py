@@ -6,11 +6,13 @@ from src.core.logger import logger
 
 
 class HabrParser:
+    '''Парсер карточек компаний на Хабр'''
+
     def __init__(self, base_url: str = 'https://career.habr.com'):
         self.base_url = base_url.rstrip('/')
 
     async def fetch_html(self, session: aiohttp.ClientSession, url: str) -> str | None:
-        """Получает HTML-страницу."""
+        '''Получает HTML-страницу.'''
         try:
             async with session.get(url) as response:
                 if response.status == 200:
@@ -21,10 +23,8 @@ class HabrParser:
             logger.error(f'Ошибка при запросе {url}: {e}')
             return None
 
-    async def parse_companies_page(
-        self, session: aiohttp.ClientSession, page: int
-    ) -> list[dict[str, str]]:
-        """Парсит одну страницу списка компаний."""
+    async def parse_companies_page(self, session: aiohttp.ClientSession, page: int) -> list[dict[str, str]]:
+        '''Парсит одну страницу списка компаний.'''
         url = f'{self.base_url}/companies?page={page}'
         html = await self.fetch_html(session, url)
         if not html:
@@ -50,10 +50,8 @@ class HabrParser:
                 })
         return companies
 
-    async def extract_email_from_company(
-        self, session: aiohttp.ClientSession, company_url: str
-    ) -> str | None:
-        """Извлекает email с карточки компании."""
+    async def extract_email_from_company(self, session: aiohttp.ClientSession, company_url: str) -> str | None:
+        '''Извлекает email с карточки компании.'''
         html = await self.fetch_html(session, company_url)
         if not html:
             return None
@@ -74,7 +72,7 @@ class HabrParser:
         return None
 
     async def parse_emails(self) -> list[dict[str, str]]:
-        """Парсит ВСЕ страницы компаний с Habr Career до конца."""
+        '''Парсит ВСЕ страницы компаний с Habr Career до конца.'''
         logger.info(f'🔍 Начинаю парсинг всех страниц на {self.base_url}...')
         all_contacts = []
         page = 1

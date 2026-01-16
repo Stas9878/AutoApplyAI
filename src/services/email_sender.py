@@ -9,6 +9,7 @@ from src.core.logger import logger
 
 
 async def send_email(to_email: str, subject: str, body: str, pdf_path: Path | None = None) -> bool:
+    '''Отправка электронных писем'''
     try:
         # Создаём письмо
         msg = MIMEMultipart()
