@@ -38,17 +38,19 @@ async def get_pending_contacts(session: AsyncSession, limit: int):
     return result.all()
 
 
-async def mark_contact_as_sent(session: AsyncSession, contact: ActiveContact):
+async def mark_contact_as_sent(session: AsyncSession, contact: ActiveContact, letter: str):
     '''Помечает контакт как успешно отправленный.'''
     contact.outreach_status = 'sent'
     contact.sent_at = datetime.now()
+    contact.letter = letter
     session.add(contact)
     await session.commit()
 
 
-async def mark_contact_as_failed(session: AsyncSession, contact: ActiveContact):
+async def mark_contact_as_failed(session: AsyncSession, contact: ActiveContact, letter: str):
     '''Помечает контакт как неудачная попытка отправки.'''
     contact.outreach_status = 'failed'
+    contact.letter = letter
     session.add(contact)
     await session.commit()
 

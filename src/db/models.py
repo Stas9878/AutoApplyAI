@@ -10,6 +10,7 @@ class BaseContact(SQLModel):
     source_url: str = Field(max_length=500)
     parsed_at: datetime = Field(default_factory=datetime.now)
     outreach_status: str | None = Field(default=None, max_length=20)
+    letter: str | None = Field(default=None, max_length=1000)
     sent_at: datetime | None = Field(default=None, nullable=True)
 
 

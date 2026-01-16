@@ -66,17 +66,17 @@ async def send_outreach_batch(session: AsyncSession, batch_size: int) -> int:
             letter = await crew.generate_letter(contact.company_name)
 
             if not letter:
-                await mark_contact_as_failed(session, contact)
+                await mark_contact_as_failed(session, contact, letter)
                 continue
 
             subject = 'Резюме Python-разработчика'
             success = await send_email(contact.email, subject, letter, pdf_path)
 
             if success:
-                await mark_contact_as_sent(session, contact)
+                await mark_contact_as_sent(session, contact, letter)
                 sent_count += 1
             else:
-                await mark_contact_as_failed(session, contact)
+                await mark_contact_as_failed(session, contact, letter)
 
         logger.info(f'✅ Отправлено {sent_count} писем')
         return sent_count
