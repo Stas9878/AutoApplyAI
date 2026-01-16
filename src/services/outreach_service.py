@@ -20,15 +20,23 @@ class OutreachState:
 
     def __init__(self):
         self.is_running = False
+        self.stop_event = asyncio.Event()
         self.started_at: datetime | None = None
 
     def start(self):
         self.is_running = True
+        self.stop_event.clear()  # сброс флага
         self.started_at = datetime.now()
 
     def stop(self):
         self.is_running = False
+        self.stop_event.clear()
         self.started_at = None
+
+    def request_stop(self):
+        '''Запрашивает остановку рассылки.'''
+        if self.is_running:
+            self.stop_event.set()
 
 
 outreach_state = OutreachState()
@@ -58,7 +66,6 @@ async def send_outreach_batch(session: AsyncSession, batch_size: int) -> int:
 
         today_sent_count = await get_sent_count_last_24h(session)
         for contact in contacts:
-
             if today_sent_count + sent_count >= settings.max_emails_per_24h:
                 break
 
@@ -68,6 +75,10 @@ async def send_outreach_batch(session: AsyncSession, batch_size: int) -> int:
             if not letter:
                 await mark_contact_as_failed(session, contact, letter)
                 continue
+
+            if outreach_state.stop_event.is_set():
+                logger.info('🛑 Получен сигнал остановки рассылки')
+                break
 
             subject = 'Резюме Python-разработчика'
             success = await send_email(contact.email, subject, letter, pdf_path)

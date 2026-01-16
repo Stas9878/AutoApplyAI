@@ -75,11 +75,28 @@ async def get_outreach_status(session: AsyncSession = Depends(get_db_session)):
 
     return StatusOutreachResponse(
         is_running=outreach_state.is_running,
+        should_stop=outreach_state.stop_event.is_set(),
         started_at=outreach_state.started_at,
         sent_count=sent_count,
         max_allowed=settings.max_emails_per_24h,
         recently_sent_to=recently_sent_to
     )
+
+
+@outreach_router.get('/stop_send')
+async def stop_outreach():
+    '''Принудительно останавливает активную рассылку.'''
+    if not outreach_state.is_running:
+        return {
+            'status': 'idle',
+            'message': 'Активная рассылка не найдена'
+        }
+
+    outreach_state.stop_event.set()
+    return {
+        'status': 'stopping',
+        'message': 'Рассылка будет остановлена после завершения текущего письма'
+    }
 
 
 @outreach_router.post('/generate', response_model=GenerateLetterResponse)

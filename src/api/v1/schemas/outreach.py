@@ -13,6 +13,7 @@ class SendOutreachResponse(BaseModel):
 class StatusOutreachResponse(BaseModel):
     '''Текущее состояние рассылки.'''
     is_running: bool
+    should_stop: bool
     started_at: datetime | None = None
     sent_count: int
     max_allowed: int
