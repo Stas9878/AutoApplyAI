@@ -60,7 +60,7 @@ async def send_outreach_batch(session: AsyncSession, batch_size: int) -> int:
                 continue
 
             subject = 'Резюме Python-разработчика'
-            success = send_email(contact.email, subject, letter, pdf_path)
+            success = await send_email(contact.email, subject, letter, pdf_path)
 
             if success:
                 await mark_contact_as_sent(session, contact)

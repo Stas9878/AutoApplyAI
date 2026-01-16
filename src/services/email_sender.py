@@ -1,4 +1,4 @@
-import smtplib
+import aiosmtplib
 from pathlib import Path
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -8,16 +8,9 @@ from src.core.settings import settings
 from src.core.logger import logger
 
 
-def send_email(to_email: str, subject: str, body: str, pdf_path: Path | None = None) -> bool:
+async def send_email(to_email: str, subject: str, body: str, pdf_path: Path | None = None) -> bool:
     try:
-        if settings.email_port == 465:
-            server = smtplib.SMTP_SSL(settings.email_host, settings.email_port)
-        else:
-            server = smtplib.SMTP(settings.email_host, settings.email_port)
-            server.starttls()
-
-        server.login(settings.email_user, settings.email_password)
-
+        # Создаём письмо
         msg = MIMEMultipart()
         msg['From'] = settings.email_user
         msg['To'] = to_email
@@ -30,16 +23,24 @@ def send_email(to_email: str, subject: str, body: str, pdf_path: Path | None = N
                 part.add_header('Content-Disposition', 'attachment', filename='Резюме.pdf')
                 msg.attach(part)
 
-        server.sendmail(settings.email_user, to_email, msg.as_string())
-        server.quit()
+        # Отправляем через aiosmtplib
+        await aiosmtplib.send(
+            msg,
+            hostname=settings.email_host,
+            port=settings.email_port,
+            username=settings.email_user,
+            password=settings.email_password,
+            use_tls=settings.email_port == 465,
+            start_tls=settings.email_port != 465,
+        )
+
         logger.info(f'📧 SMTP успешная отправка резюме на {to_email}')
         return True
 
-    except smtplib.SMTPRecipientsRefused as e:
-        # Ошибки вроде "non-local recipient", "user unknown"
+    except aiosmtplib.SMTPRecipientsRefused as e:
         logger.warning(f'📧 SMTP отклонил получателя {to_email}: {e}')
         return False
-    except smtplib.SMTPException as e:
+    except aiosmtplib.SMTPException as e:
         logger.error(f'📧 SMTP ошибка при отправке на {to_email}: {e}')
         return False
     except Exception as e:
