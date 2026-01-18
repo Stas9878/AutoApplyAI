@@ -2,7 +2,6 @@ from crewai import Agent, Task, Crew, LLM, Process
 
 from src.core.logger import logger
 from src.core.settings import settings
-from src.utils.resume_loader import load_resume_text
 
 
 class CoverLetterCrew:
@@ -16,7 +15,7 @@ class CoverLetterCrew:
             top_p=0.9,
             repeat_penalty=1.1
         )
-        self.resume_text = load_resume_text()
+        self.resume_text = settings.resume_text
 
     def create_crew(self, company_name: str) -> Crew:
         '''Создаёт команду агентов для генерации письма под конкретную компанию.'''

@@ -1,6 +1,9 @@
+import sys
 from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from src.utils.resume_loader import load_resume_text
 
 
 class Settings(BaseSettings):
@@ -30,12 +33,27 @@ class Settings(BaseSettings):
     llm_model: str
     llm_url: str
 
+    embedding_model: str
+
     model_config = SettingsConfigDict(
         env_file='.env',
         env_file_encoding='utf-8',
         extra='ignore',  # игнорировать лишние переменные в .env
         case_sensitive=False  # EMAIL_USER == email_user
     )
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        try:
+            self._resume_text = load_resume_text(self.resume_pdf_path)
+        except Exception as e:
+            print(f'❌ КРИТИЧЕСКАЯ ОШИБКА: Не удалось загрузить резюме из {self.resume_pdf_path}', file=sys.stderr)
+            print(f'Причина: {e}', file=sys.stderr)
+            sys.exit(1)
+
+    @property
+    def resume_text(self) -> str:
+        return self._resume_text
 
 
 # Экземпляр настроек
