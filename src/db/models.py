@@ -8,58 +8,45 @@ from sqlmodel import SQLModel, Field, BigInteger, JSON
 class User(SQLModel, table=True):
     uuid: UUID = Field(default_factory=uuid4, primary_key=True)
     telegram_id: int = Field(sa_type=BigInteger, unique=True, index=True)
-    email: EmailStr | None = Field(default=None, unique=True, index=True)
-    created_at: datetime = Field(default_factory=datetime.now)
     is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.now)
+
+
+class UserResume(SQLModel, table=True):
+    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
+    user_uuid: UUID = Field(foreign_key='user.uuid', index=True, unique=True)
+
+    text: str  # ← только текст резюме (из PDF)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+
+class UserSearchFilter(SQLModel, table=True):
+    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
+    user_uuid: UUID = Field(foreign_key='user.uuid', index=True, unique=True)
+
+    text_query: str = Field(default='python')
+    experience: list[str] = Field(
+        sa_type=JSON,
+        default=['between1And3', 'between3And6']
+    )
+    employment: list[str] = Field(
+        sa_type=JSON,
+        default=['full']
+    )
+    area_id: int = Field(default=113)  # Россия
+    only_with_salary: bool = Field(default=False)
+    min_match_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
 
 
 # HeadHunter
-class HHProfile(SQLModel, table=True):
-    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
-
-    user_uuid: UUID = Field(foreign_key='user.uuid', index=True)
-
-    hh_access_token: str
-    hh_refresh_token: str | None = None
-    expires_at: datetime | None = None
-
-    resume_id: str
-
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
-
-
-class HHSearchFilter(SQLModel, table=True):
-    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
-    hh_profile_uuid: UUID = Field(foreign_key='hhprofile.uuid', index=True)
-
-    # Основной текстовый запрос
-    text_query: str
-
-    # Опыт: значения из HH API: noExperience, between1And3, between3And6, moreThan6
-    experience: list[str] = Field(sa_type=JSON, default=['between1And3', 'between3And6'])
-
-    # Занятость: full, part, project, volunteer, probation
-    employment: list[str] = Field(sa_type=JSON, default=['full'])
-
-    # Регион (area_id в HH)
-    area_id: int
-
-    # Только с зарплатой?
-    only_with_salary: bool = Field(default=False)
-
-    # Минимальный порог соответствия (0.0 – 1.0)
-    min_match_threshold: float = Field(default=0.7, ge=0.0, le=1.0)
-
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
-
-
 class HHVacancy(SQLModel, table=True):
-    id: str = Field(primary_key=True)  # vacancy_id на HH
-
+    id: str = Field(primary_key=True)
     title: str
-    employer_name: str
+    company: str
     url: str
     experience: str
     employment: str
@@ -68,26 +55,15 @@ class HHVacancy(SQLModel, table=True):
     currency: str | None = None
     description: str
     key_skills: list[str] = Field(sa_type=JSON, default=[])
-
-    is_reported: bool = Field(default=False, index=True)
-
+    published_at: str
     created_at: datetime = Field(default_factory=datetime.now, index=True)
     updated_at: datetime = Field(default_factory=datetime.now)
 
 
-class HHApplicationLog(SQLModel, table=True):
-    uuid: UUID = Field(default_factory=uuid4, primary_key=True)
-
-    hh_profile_uuid: UUID = Field(foreign_key='hhprofile.uuid', index=True)
-    hh_vacancy_id: str = Field(foreign_key='hhvacancy.id', index=True)
-
-    match_score: float
-
-    status: str = Field(default='pending', index=True)  # sent, error
-    error_message: str | None = None
-
-    letter: str | None = Field(default=None, max_length=1000)  # Сопроводительное письмо
-    applied_at: datetime = Field(default_factory=datetime.now, index=True)
+class SentVacancyLog(SQLModel, table=True):
+    user_uuid: UUID = Field(foreign_key='user.uuid', primary_key=True)
+    vacancy_id: str = Field(foreign_key='hhvacancy.id', primary_key=True)
+    sent_at: datetime = Field(default_factory=datetime.now)
 
 
 # Рассылка по email
