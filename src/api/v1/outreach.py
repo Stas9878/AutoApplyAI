@@ -50,7 +50,11 @@ async def trigger_outreach(
         )
 
     # Запускаем фоновую задачу
-    background_tasks.add_task(send_outreach_batch, session, batch_size=10)
+    background_tasks.add_task(
+        send_outreach_batch,
+        session=session,
+        batch_size=settings.max_emails_per_24h - sent_count
+    )
 
     return SendOutreachResponse(
         status='started',
