@@ -1,92 +1,141 @@
-import re
-from typing import Annotated
-from fastapi import APIRouter, Query
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 
 from src.core.logger import logger
-from src.core.settings import settings
-from src.services.matching import EmbeddingMatcher
-from src.platforms.hh.client import HHPublicClient
-from src.api.v1.schemas.hh import HHSearchResponse
+from src.db.session import get_db_session
+from src.db.models import User, UserResume, UserSearchFilter
+from src.platforms.hh.service import search_vacancies_for_user
+from src.utils.resume_loader import load_resume_text_from_bytes
+from src.api.v1.schemas.hh import HHSearchResponse, UserSearchFilterUpdate
+from src.db.crud import save_or_update_user_resume, save_or_update_user_filter
 
 hh_router = APIRouter(prefix='/hh', tags=['HeadHunter'])
 
-# Инициализируем матчинг
-_matcher = EmbeddingMatcher()
 
-
-def _clean_html(raw_html: str) -> str:
-    '''Удаляет HTML-теги и нормализует текст.'''
-    if not raw_html:
-        return ''
-
-    clean = re.sub(r'<[^>]+>', ' ', raw_html)
-    clean = re.sub(r'\s+', ' ', clean)
-    return clean.strip()
-
-
-@hh_router.get('/search', response_model=HHSearchResponse)
-async def search_and_match_vacancies(
-    text: str,
-    experience: Annotated[list[str], Query()] = ['between1And3', 'between3And6'],
-    employment: Annotated[list[str], Query()] = ['full'],
-    area_id: int = 113,
-    only_with_salary: bool = False,
-    min_match_threshold: Annotated[float, Query(ge=0.0, le=1.0)] = 0.7,
-    limit: Annotated[int, Query(gt=0, le=50)] = 10
+@hh_router.post('/user')
+async def get_or_create_user(
+    telegram_id: int,
+    session: AsyncSession = Depends(get_db_session)
 ):
     '''
-    Ищет вакансии на HeadHunter и оценивает их соответствие вашему резюме.
-    Возвращает отсортированный по релевантности список.
+    Создаёт пользователя, если не существует. Возвращает UUID.
     '''
-    results = []
-    processed_ids = set()
+    stmt = select(User).where(User.telegram_id == telegram_id)
+    result = await session.exec(stmt)
+    user = result.one_or_none()
 
-    async with HHPublicClient() as client:
-        async for vacancy in client.search_all_vacancies(
-            text=text,
-            experience=experience,
-            employment=employment,
-            area_id=area_id,
-            only_with_salary=only_with_salary,
-            max_pages=3
-        ):
-            if len(results) >= limit:
-                break
+    if not user:
+        user = User(telegram_id=telegram_id)
+        session.add(user)
+        await session.commit()
+        await session.refresh(user)
 
-            vac_id = vacancy['id']
-            if vac_id in processed_ids:
-                continue
-            processed_ids.add(vac_id)
+    return {'user_uuid': str(user.uuid), 'telegram_id': telegram_id}
 
-            try:
-                details = await client.get_vacancy_details(vac_id)
-            except Exception as e:
-                logger.warning(f'Пропущена вакансия {vac_id}: {e}')
-                continue
 
-            title = vacancy.get('name', '')
-            description = _clean_html(details.get('description', ''))
-            key_skills = [skill['name'] for skill in details.get('key_skills', [])]
-            published_at = vacancy.get('published_at', '')
+@hh_router.post('/resume')
+async def upload_resume(
+    telegram_id: int,
+    file: UploadFile = File(...),
+    session: AsyncSession = Depends(get_db_session)
+):
+    '''
+    Принимает PDF-файл резюме, парсит текст и сохраняет/обновляет.
+    '''
+    if file.content_type != 'application/pdf':
+        raise HTTPException(status_code=400, detail='Только PDF-файлы')
 
-            score = _matcher.compute_match_score(
-                resume_text=settings.resume_text,
-                vacancy_title=title,
-                vacancy_description=description,
-                key_skills=key_skills
-            )
+    # Читаем содержимое файла
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail='Файл пуст')
 
-            if score >= min_match_threshold:
-                results.append({
-                    'vacancy_id': vac_id,
-                    'title': title,
-                    'company': vacancy['employer']['name'],
-                    'url': vacancy['alternate_url'].strip(),  # уберём пробелы
-                    'match_score': round(score, 3),
-                    'salary': vacancy.get('salary'),
-                    'published_at': published_at,
-                    'snippet': description[:200] + ('...' if len(description) > 200 else '')
-                })
+    # Находим пользователя
+    user_stmt = select(User).where(User.telegram_id == telegram_id)
+    user_result = await session.exec(user_stmt)
+    user = user_result.one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail='Пользователь не найден. Сначала вызовите /bot/user')
 
-    results.sort(key=lambda x: x['match_score'], reverse=True)
-    return {'results': results}
+    # Парсим резюме из байтов
+    try:
+        resume_text = load_resume_text_from_bytes(contents)
+    except Exception as e:
+        logger.error(f'Ошибка парсинга PDF для {telegram_id}: {e}')
+        raise HTTPException(status_code=400, detail='Не удалось распарсить PDF')
+
+    # Сохраняем или обновляем
+    await save_or_update_user_resume(session, user.uuid, resume_text)
+
+    return {'status': 'success', 'message': 'Резюме успешно загружено'}
+
+
+@hh_router.post('/filters')
+async def set_user_filters(
+    telegram_id: int,
+    filters: UserSearchFilterUpdate,
+    session: AsyncSession = Depends(get_db_session)
+):
+    '''
+    Устанавливает или обновляет фильтры поиска для пользователя.
+    '''
+    # Находим пользователя
+    user_stmt = select(User).where(User.telegram_id == telegram_id)
+    user_result = await session.exec(user_stmt)
+    user = user_result.one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail='Пользователь не найден. Сначала вызовите /bot/user')
+
+    # Сохраняем/обновляем фильтры
+    await save_or_update_user_filter(
+        session,
+        user.uuid,
+        **filters.model_dump()
+    )
+
+    return {'status': 'success', 'message': 'Фильтры успешно обновлены'}
+
+
+@hh_router.get('/report', response_model=HHSearchResponse)
+async def get_hh_report_for_user(
+    telegram_id: int,
+    limit: int,
+    session: AsyncSession = Depends(get_db_session)
+):
+    '''
+    Для бота: получает свежие релевантные вакансии по настройкам пользователя.
+    Не сохраняет вакансии и не помечает как "отправленные" — только просмотр.
+    '''
+    # 1. Найти пользователя
+    user_stmt = select(User).where(User.telegram_id == telegram_id, User.is_active == True)
+    user_result = await session.exec(user_stmt)
+    user = user_result.one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail='Пользователь не найден')
+
+    # 2. Найти резюме
+    resume_stmt = select(UserResume).where(UserResume.user_uuid == user.uuid)
+    resume_result = await session.exec(resume_stmt)
+    resume = resume_result.one_or_none()
+    if not resume:
+        raise HTTPException(status_code=400, detail='Резюме не загружено')
+
+    # 3. Найти фильтры
+    filter_stmt = select(UserSearchFilter).where(UserSearchFilter.user_uuid == user.uuid)
+    filter_result = await session.exec(filter_stmt)
+    filter_obj = filter_result.one_or_none()
+    if not filter_obj:
+        raise HTTPException(status_code=400, detail='Фильтры не настроены')
+
+    # 4. Выполнить поиск (без сохранения в SentVacancyLog)
+    vacancies = await search_vacancies_for_user(
+        session=session,
+        user_uuid=user.uuid,
+        resume_text=resume.text,
+        filter_data=filter_obj.model_dump(),
+        max_pages=2,
+        limit_per_user=limit,
+        mark_as_sent=False
+    )
+    return {'results': vacancies}
