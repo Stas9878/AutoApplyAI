@@ -1,4 +1,5 @@
 import re
+import io
 import fitz
 from pathlib import Path
 
@@ -26,3 +27,11 @@ def load_resume_text(pdf_path: Path) -> str:
     except Exception as e:
         logger.error(f'❌ Ошибка при чтении PDF: {e}')
         raise
+
+
+def load_resume_text_from_bytes(pdf_bytes: bytes) -> str:
+    '''Загружает текст из байтов PDF-файла.'''
+    doc = fitz.open(stream=io.BytesIO(pdf_bytes), filetype='pdf')
+    raw_text = ''.join(page.get_text() for page in doc)
+    doc.close()
+    return _clean_text(raw_text)
