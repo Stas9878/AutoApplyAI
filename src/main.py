@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from src.db.session import engine
 from src.core.logger import logger
+from src.api.v1.hh import hh_router
 from src.core.settings import settings
 from src.api.v1.outreach import outreach_router
 from src.db.models import ActiveContact, DeletedContact
@@ -32,7 +33,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=lifespan)
 
-app.include_router(outreach_router)
+app.include_router(router=outreach_router, prefix='/api/v1')
+app.include_router(router=hh_router, prefix='/api/v1')
 
 
 @app.get('/')

@@ -37,10 +37,10 @@ class HHSearchFilter(SQLModel, table=True):
     text_query: str
 
     # Опыт: значения из HH API: noExperience, between1And3, between3And6, moreThan6
-    experience: list = Field(sa_type=JSON, default=['between1And3', 'between3And6'])
+    experience: list[str] = Field(sa_type=JSON, default=['between1And3', 'between3And6'])
 
     # Занятость: full, part, project, volunteer, probation
-    employment: list = Field(sa_type=JSON, default=['full'])
+    employment: list[str] = Field(sa_type=JSON, default=['full'])
 
     # Регион (area_id в HH)
     area_id: int
@@ -67,7 +67,9 @@ class HHVacancy(SQLModel, table=True):
     salary_to: int | None = None
     currency: str | None = None
     description: str
-    key_skills: list = Field(sa_type=JSON, default=[])
+    key_skills: list[str] = Field(sa_type=JSON, default=[])
+
+    is_reported: bool = Field(default=False, index=True)
 
     created_at: datetime = Field(default_factory=datetime.now, index=True)
     updated_at: datetime = Field(default_factory=datetime.now)
