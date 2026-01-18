@@ -1,10 +1,8 @@
-import re
-import fitz
-from pathlib import Path
 from crewai import Agent, Task, Crew, LLM, Process
 
 from src.core.logger import logger
 from src.core.settings import settings
+from src.utils.resume_loader import load_resume_text
 
 
 class CoverLetterCrew:
@@ -18,27 +16,7 @@ class CoverLetterCrew:
             top_p=0.9,
             repeat_penalty=1.1
         )
-        self.resume_text = self._load_resume_text()
-
-    def _clean_text(self, text: str) -> str:
-        '''Очищает текст резюме от лишних переносов и пробелов.'''
-        text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text)
-        text = re.sub(r' +', ' ', text)
-        return text.strip()
-
-    def _load_resume_text(self) -> str:
-        '''Загружает и парсит PDF-резюме в текст.'''
-        pdf_path = Path(settings.resume_pdf_path)
-        if not pdf_path.exists():
-            raise FileNotFoundError(f'Резюме не найдено: {pdf_path}')
-        try:
-            doc = fitz.open(pdf_path)
-            raw_text = ''.join(page.get_text() for page in doc)
-            doc.close()
-            return self._clean_text(raw_text)
-        except Exception as e:
-            logger.error(f'❌ Ошибка при чтении PDF: {e}')
-            raise
+        self.resume_text = load_resume_text()
 
     def create_crew(self, company_name: str) -> Crew:
         '''Создаёт команду агентов для генерации письма под конкретную компанию.'''
